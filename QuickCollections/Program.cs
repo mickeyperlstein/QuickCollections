@@ -10,6 +10,18 @@ namespace QuickCollections
     {
         static void Main(string[] args)
         {
+
+            QuickPopCollection<int>.test();
+
+
+
+            
+            
+           
         }
     }
+
+    
+
 }
+
