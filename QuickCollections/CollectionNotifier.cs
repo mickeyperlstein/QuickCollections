@@ -5,7 +5,7 @@ using System.Text;
 
 namespace QuickCollections
 {
-    public abstract class MaxCollection<T>
+    public abstract class CollectionNotifier<T> :INotifier<T>
     {
         protected Node<T> head;  // head of list
         StringBuilder sb = new StringBuilder();
@@ -28,5 +28,22 @@ namespace QuickCollections
             return sb.ToString();
 
         }
+
+        #region INotifier events
+        public event EventHandler<Node<T>> Pushed;
+        public event EventHandler<Node<T>> Popped;
+
+        public virtual void OnPopped(Node<T> node)
+        {
+            if (this.Popped != null)
+                this.Popped(this, node);
+        }
+
+        public virtual void OnPushed(Node<T> node)
+        {
+            if (this.Pushed != null)
+                this.Pushed(this, node);
+        }
+        #endregion
     }
 }

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Text;
+using System.Threading;
 
 namespace QuickCollections
 {
@@ -10,45 +11,55 @@ namespace QuickCollections
     /// threadsafe Push O(n) // Pop O(1)
     /// </summary>
     /// <typeparam name="T"></typeparam>
-    class QuickPopCollection<T> :  MaxCollection<T>
+    class QuickPopCollection<T> :  CollectionNotifier<T>, INotifier<T>
     {
-        protected object sync = new object();
+
+        ReaderWriterLock sync = new ReaderWriterLock();
+        public readonly TimeSpan TEN_SECS = new TimeSpan(0, 0, 10);
+
+       
         Func<T, T, int> comp;
         public QuickPopCollection(Func<T, T, int> comp):base()
         {
             this.comp = comp;
         }
         
-
+       
       
         public T Pop() //O(1)
         {
-            lock (sync)
-            {
+            sync.AcquireReaderLock(TEN_SECS);
+            
                 if (head != null)
                 {
-                    T ret = head.data;
+
+                    var ret = head;
+                    sync.UpgradeToWriterLock(TEN_SECS);
                     head = head.next;
-                    return ret;
+                    sync.ReleaseLock();
+                    base.OnPopped(ret);
+                    return ret.data;
                 }
                 else
                     throw new Exception("no more data");
-            }
+           
         }
 
 
         public void Push(T item) // O(n)
         {
             Node<T> new_node = new Node<T> { data = item };
+
+            sync.AcquireReaderLock(TEN_SECS);
             
-            lock (sync)
-            {
                 /* Special case for head node */
                 if (head == null ||
                     comp(head.data, item) <= 0)
                 {
-                    new_node.next = head;
-                    head = new_node;
+                    var cookie = sync.UpgradeToWriterLock(TEN_SECS);
+                        new_node.next = head;
+                        head = new_node;
+                    sync.DowngradeFromWriterLock(ref cookie);
                 }
                 else
                 {
@@ -60,12 +71,15 @@ namespace QuickCollections
                     while (current.next != null &&
                            comp(current.next.data, item) > 0)
                         current = current.next;
-
-                    new_node.next = current.next;
-                    current.next = new_node;
+                    var cookie = sync.UpgradeToWriterLock(TEN_SECS);
+                        new_node.next = current.next;
+                        current.next = new_node;
+                    sync.DowngradeFromWriterLock(ref cookie);
 
                 }
-            }
+                sync.ReleaseLock();
+                base.OnPushed(new_node);
+            
         }
 
       
@@ -75,6 +89,12 @@ namespace QuickCollections
         /*  function to test above methods */
         public static void test()
         {
+
+            Console.WriteLine("-----------------------------------------------");
+            Console.WriteLine("      Quick pop  collection test");
+
+            Console.WriteLine("-----------------------------------------------");
+
             QuickPopCollection<int> llist = new QuickPopCollection<int>((y, x) =>
             {
                 if (x == y) return 0;
@@ -82,32 +102,47 @@ namespace QuickCollections
                 return -1;
             });
 
+            llist.Popped += (source,node) => {
+                Console.WriteLine("Node Popped O(1):{0}" , node.data);
+                Console.WriteLine("Current state {0}", llist.head);
+            };
 
-            llist.Push(1000);
-            llist.Push(200);
-            llist.Push(30);
-            llist.Push(400);
-            var ret = llist.Pop();
-            Debug.Assert(ret == 1000);
-            ret = llist.Pop();
-            Debug.Assert(ret == 400);
-            llist.Push(100);
-
-            ret = llist.Pop();
-            Debug.Assert(ret == 200);
-            ret = llist.Pop();
-            Debug.Assert(ret == 100);
-            ret = llist.Pop();
-            Debug.Assert(ret == 30);
+            llist.Pushed += (source, node) =>
+            {
+                Console.WriteLine("Node Pushed O(n):{0}" , node.data);
+                Console.WriteLine("Current state {0}", llist.head);
+            };
             try
             {
+                llist.Push(1000);
+                llist.Push(200);
+                llist.Push(30);
+                llist.Push(400);
+                var ret = llist.Pop();
+                Debug.Assert(ret == 1000);
                 ret = llist.Pop();
-            }
-            catch (Exception e)
-            {
-                Debug.Assert(e.Message == "no more data");
-            }
+                Debug.Assert(ret == 400);
+                llist.Push(100);
 
+                ret = llist.Pop();
+                Debug.Assert(ret == 200);
+                ret = llist.Pop();
+                Debug.Assert(ret == 100);
+                ret = llist.Pop();
+                Debug.Assert(ret == 30);
+                try
+                {
+                    ret = llist.Pop();
+                }
+                catch (Exception e)
+                {
+                    Debug.Assert(e.Message == "no more data");
+                }
+            }
+            catch (ApplicationException)
+            {
+                Console.WriteLine("starved lock issues");
+            }
         }
     }
 

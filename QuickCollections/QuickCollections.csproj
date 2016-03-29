@@ -41,7 +41,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="MaxCollection.cs" />
+    <Compile Include="INotifier.cs" />
+    <Compile Include="IPopper.cs" />
+    <Compile Include="IPusher.cs" />
+    <Compile Include="CollectionNotifier.cs" />
     <Compile Include="QuickPopCollection.cs" />
     <Compile Include="Node.cs" />
     <Compile Include="Program.cs" />
