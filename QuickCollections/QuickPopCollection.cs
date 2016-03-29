@@ -1,110 +1,115 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 
 namespace QuickCollections
 {
-   // Java Program to insert in a sorted list
-class QuickPopCollection<T>
-{
-    Func<T, T, int> comp;
-    public QuickPopCollection(Func<T,T,int> comp)
+    /// <summary>
+    /// threadsafe Push O(n) // Pop O(1)
+    /// </summary>
+    /// <typeparam name="T"></typeparam>
+    class QuickPopCollection<T> :  MaxCollection<T>
     {
-        this.comp = comp;
-    }
-    Node<T> max;  // max of list
- 
-    /* Linked list Node*/
-    
- 
-    /* function to insert a new_node in a list. */
-
-    public T Pop() //O(1)
-    {
-        if (max !=null)
+        protected object sync = new object();
+        Func<T, T, int> comp;
+        public QuickPopCollection(Func<T, T, int> comp):base()
         {
-            T ret = max.data;
-            max = max.next;
-            return ret;
-        }else
-            throw new Exception ("no more data");
-    }
-    
-    
-    public void Push(T data) // O(n)
-    {
-         Node<T> new_node = new Node<T> { data = data };
+            this.comp = comp;
+        }
         
- 
-         /* Special case for max node */
-         if (max == null || 
-             comp( max.data ,data)<=0)
-         {
-            new_node.next = max;
-            max = new_node;
-         }
-         else {
- 
-            /* Locate the node before point of insertion. */
-             Node<T> current = max;
- 
-            while (current.next != null &&
-                   comp(current.next.data , new_node.data)>0)
-                  current = current.next;
- 
-            new_node.next = current.next;
-            current.next = new_node;
-         }
-     }
- 
-                  /*Utility functions*/
- 
-   
 
-    StringBuilder sb = new StringBuilder();
-    public override string ToString()
-    {
-        sb.Clear();
-        if (max == null)
-            sb.AppendFormat("EMPTY");
-        else
+      
+        public T Pop() //O(1)
         {
-            sb.AppendFormat("MAX:{0}", max.data);
-            Node<T> t = max.next;
-            while (t != null)
+            lock (sync)
             {
-                sb.AppendFormat("=>{0}", t.data);
-                t = t.next;
-
+                if (head != null)
+                {
+                    T ret = head.data;
+                    head = head.next;
+                    return ret;
+                }
+                else
+                    throw new Exception("no more data");
             }
         }
-        return sb.ToString();
 
+
+        public void Push(T item) // O(n)
+        {
+            Node<T> new_node = new Node<T> { data = item };
+            
+            lock (sync)
+            {
+                /* Special case for head node */
+                if (head == null ||
+                    comp(head.data, item) <= 0)
+                {
+                    new_node.next = head;
+                    head = new_node;
+                }
+                else
+                {
+
+                    
+                    /* Locate the node before point of insertion. */
+                    Node<T> current = head;        
+
+                    while (current.next != null &&
+                           comp(current.next.data, item) > 0)
+                        current = current.next;
+
+                    new_node.next = current.next;
+                    current.next = new_node;
+
+                }
+            }
+        }
+
+      
+
+       
+
+        /*  function to test above methods */
+        public static void test()
+        {
+            QuickPopCollection<int> llist = new QuickPopCollection<int>((y, x) =>
+            {
+                if (x == y) return 0;
+                if (x < y) return 1;
+                return -1;
+            });
+
+
+            llist.Push(1000);
+            llist.Push(200);
+            llist.Push(30);
+            llist.Push(400);
+            var ret = llist.Pop();
+            Debug.Assert(ret == 1000);
+            ret = llist.Pop();
+            Debug.Assert(ret == 400);
+            llist.Push(100);
+
+            ret = llist.Pop();
+            Debug.Assert(ret == 200);
+            ret = llist.Pop();
+            Debug.Assert(ret == 100);
+            ret = llist.Pop();
+            Debug.Assert(ret == 30);
+            try
+            {
+                ret = llist.Pop();
+            }
+            catch (Exception e)
+            {
+                Debug.Assert(e.Message == "no more data");
+            }
+
+        }
     }
-     
- 
-     /*  function to test above methods */
-     public static void test()
-     {
-         QuickPopCollection<int> llist = new QuickPopCollection<int>((y,x) =>
-         {
-             if (x == y) return 0;
-             if (x < y) return 1;
-             return -1;
-         });
-
-
-         llist .Push (1000);
-         llist.Push (200);
-         llist.Push(30);
-         llist.Push(400);
-         var ret = llist.Pop();
-
-         llist.Push (100);
-
-     }
-}
 
 
 }

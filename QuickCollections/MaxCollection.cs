@@ -5,19 +5,19 @@ using System.Text;
 
 namespace QuickCollections
 {
-    public class Node<T> 
+    public abstract class MaxCollection<T>
     {
-
-        internal Node<T> next;
-        internal T data;
+        protected Node<T> head;  // head of list
         StringBuilder sb = new StringBuilder();
         public override string ToString()
         {
-            this.sb.Clear();
-           
+            sb.Clear();
+            if (head == null)
+                sb.AppendFormat("EMPTY");
+            else
             {
-                sb.AppendFormat("[{0}]", this.data);
-                var t = this.next;
+                sb.AppendFormat("MAX:{0}", head.data);
+                var t = head.next;
                 while (t != null)
                 {
                     sb.AppendFormat("=>{0}", t.data);
@@ -26,9 +26,7 @@ namespace QuickCollections
                 }
             }
             return sb.ToString();
+
         }
-        
     }
-
-
 }

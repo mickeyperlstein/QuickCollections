@@ -11,8 +11,8 @@ namespace QuickCollections
         static void Main(string[] args)
         {
 
+            QuickPushCollection<int>.test();
             QuickPopCollection<int>.test();
-
 
 
             
